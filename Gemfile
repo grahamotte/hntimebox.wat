@@ -33,6 +33,8 @@ gem 'turbolinks'
 gem 'webpacker', '~> 6.0.0.beta.2'
 gem 'xmlrpc'
 
+gem 'curses'
+
 group :default, :deploy, :development, :test do
   gem 'json'
   gem 'net-ssh', '~> 7.0.0.beta1'

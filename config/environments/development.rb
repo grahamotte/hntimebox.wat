@@ -9,8 +9,8 @@ Rails.application.configure do
   config.action_mailer.delivery_method = :sendgrid_actionmailer
   config.action_mailer.perform_caching = false
   config.action_mailer.raise_delivery_errors = false
-  config.action_mailer.sendgrid_actionmailer_settings = { api_key: Rails.application.secrets.sendgrid_token, raise_delivery_errors: true }
-  config.active_job.queue_adapter = :sidekiq
+  # config.action_mailer.sendgrid_actionmailer_settings = { api_key: Rails.application.secrets.sendgrid_token, raise_delivery_errors: true }
+  # config.active_job.queue_adapter = :sidekiq
   config.active_record.migration_error = :page_load
   config.active_record.verbose_query_logs = true
   config.active_storage.service = :local
