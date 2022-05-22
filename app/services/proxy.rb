@@ -43,11 +43,20 @@ class Proxy
     passes >= failures
   end
 
+  def pass_rate
+    return 0 if passes.zero?
+    return 1 if failures.zero?
+
+    (passes.to_f / (passes + failures))
+  end
+
   def serialize
     {
       url: url,
       tid: tid,
-      pass_rate: (passes.to_f / (passes + failures)).round(2),
+      pass_rate: pass_rate.round(2),
+      passes: passes,
+      failures: failures,
       message: message,
     }
   end

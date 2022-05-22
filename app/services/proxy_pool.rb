@@ -4,7 +4,7 @@ class ProxyPool
   def initialize
     urls = begin
       if ENV['NOPROXY']
-        [nil]
+        ['localhost']
       elsif ENV['FINDPROXY']
         Rails.cache.clear
 
@@ -14,7 +14,7 @@ class ProxyPool
         [
           File.read(Rails.root.join('tmp/http.txt')).split(/[\r\n]+/).map(&:chomp).select(&:present?).map { |x| "http://#{x}" },
           File.read(Rails.root.join('tmp/https.txt')).split(/[\r\n]+/).map(&:chomp).select(&:present?).map { |x| "https://#{x}" },
-        ].flatten.uniq { |x| x.split('//').last }
+        ].flatten.uniq { |x| x.split('//').last }.sample(265)
       else
         File.read(Rails.root.join('config/known_good_proxies.txt')).split(/[\r\n]+/).map(&:chomp).select(&:present?)
       end
@@ -32,7 +32,8 @@ class ProxyPool
   end
 
   def unused_count
-    pool.count(&:viable?) - pool.count(&:busy?) - 1
+    # always leave one proxy free for  buffer, but also don't enqueue too many threads at once
+    [pool.count(&:viable?) - pool.count(&:busy?) - 1, 16].min
   end
 
   def reserve
@@ -47,15 +48,15 @@ class ProxyPool
 
   def with_proxy
     reserve
-    yield
+    p = current
+    res = yield
+    p.pass
+    res
   rescue StandardError => e
-    current.error(e.message) if current.present?
+    p.error(e.message) if p.present?
     raise e
   ensure
-    if current.present?
-      current.pass
-      current.tid = nil
-    end
+    p.tid = nil if p.present?
   end
 
   def req(method: :get, url:, **params)
@@ -88,16 +89,20 @@ class ProxyPool
       standard.call('url', 32),
       standard.call('tid', 8),
       standard.call('pass%', 8),
+      standard.call('passes', 8),
+      standard.call('failures', 8),
       standard.call('message', 32),
     ].join(' ')
 
     res << "\n"
 
-    pool.sort_by(&:url).map(&:serialize).each do |x|
+    pool.sort_by(&:pass_rate).reverse.first(32).map(&:serialize).each do |x|
       res << [
         standard.call(x[:url], 32),
         standard.call(x[:tid], 8),
         standard.call(x[:pass_rate], 8),
+        standard.call(x[:passes], 8),
+        standard.call(x[:failures], 8),
         standard.call(x[:message], 32),
       ].join(' ')
       res << "\n"
